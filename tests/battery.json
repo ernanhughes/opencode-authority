@@ -1,0 +1,855 @@
+{
+  "battery": "authority-v0.1",
+  "now": "2026-09-25T12:00:00.000Z",
+  "note": "Each case: policy + proposal + expected verdict (+ reason family). Tests authority distinctions, not agent competence.",
+  "cases": [
+    {
+      "id": "A-valid-action-invalid-data",
+      "want": "REFORMULATE",
+      "policy": {
+        "version": "t1",
+        "data_use": [
+          {
+            "id": "cal-travel",
+            "purpose": "book-travel",
+            "data_scope": [
+              "calendar:travel-window"
+            ],
+            "permitted_operations": [
+              "ACCESS",
+              "PROCESS"
+            ]
+          }
+        ],
+        "actions": [
+          {
+            "id": "search",
+            "purpose": "book-travel",
+            "action_scope": [
+              "search-flights"
+            ],
+            "approval": "none"
+          }
+        ]
+      },
+      "proposal": {
+        "proposal_id": "pA",
+        "purpose": "book-travel",
+        "external_operation": {
+          "kind": "ACT",
+          "action": "search-flights"
+        },
+        "data_uses": [
+          {
+            "source": {
+              "id": "calendar:travel-window",
+              "kind": "calendar"
+            },
+            "operation": "ACCESS",
+            "necessary": true
+          },
+          {
+            "source": {
+              "id": "mailbox:all",
+              "kind": "mail"
+            },
+            "operation": "ACCESS",
+            "necessary": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "baseline-allow",
+      "want": "ALLOW",
+      "policy": {
+        "version": "t1",
+        "data_use": [
+          {
+            "id": "cal-travel",
+            "purpose": "book-travel",
+            "data_scope": [
+              "calendar:travel-window"
+            ],
+            "permitted_operations": [
+              "ACCESS",
+              "PROCESS"
+            ]
+          }
+        ],
+        "actions": [
+          {
+            "id": "search",
+            "purpose": "book-travel",
+            "action_scope": [
+              "search-flights"
+            ],
+            "approval": "none"
+          }
+        ]
+      },
+      "proposal": {
+        "proposal_id": "p0",
+        "purpose": "book-travel",
+        "external_operation": {
+          "kind": "ACT",
+          "action": "search-flights"
+        },
+        "data_uses": [
+          {
+            "source": {
+              "id": "calendar:travel-window",
+              "kind": "calendar"
+            },
+            "operation": "ACCESS",
+            "necessary": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "B-internal-not-disclosure",
+      "want": "REFORMULATE",
+      "policy": {
+        "version": "t1",
+        "data_use": [
+          {
+            "id": "diet-internal",
+            "purpose": "book-table",
+            "data_scope": [
+              "profile:diet"
+            ],
+            "permitted_operations": [
+              "ACCESS",
+              "PROCESS"
+            ]
+          }
+        ],
+        "actions": [
+          {
+            "id": "book",
+            "purpose": "book-table",
+            "action_scope": [
+              "book-table"
+            ],
+            "approval": "none"
+          }
+        ]
+      },
+      "proposal": {
+        "proposal_id": "pB",
+        "purpose": "book-table",
+        "external_operation": {
+          "kind": "ACT",
+          "action": "book-table"
+        },
+        "data_uses": [
+          {
+            "source": {
+              "id": "profile:diet",
+              "kind": "profile"
+            },
+            "operation": "DISCLOSE",
+            "recipient": "restaurant",
+            "necessary": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-infer-without-authority",
+      "want": "REFORMULATE",
+      "policy": {
+        "version": "t1",
+        "data_use": [
+          {
+            "id": "cal-read",
+            "purpose": "schedule",
+            "data_scope": [
+              "calendar:*"
+            ],
+            "permitted_operations": [
+              "ACCESS",
+              "PROCESS"
+            ]
+          }
+        ],
+        "actions": [
+          {
+            "id": "sched",
+            "purpose": "schedule",
+            "action_scope": [
+              "schedule-meeting"
+            ],
+            "approval": "none"
+          }
+        ]
+      },
+      "proposal": {
+        "proposal_id": "pC",
+        "purpose": "schedule",
+        "external_operation": {
+          "kind": "ACT",
+          "action": "schedule-meeting"
+        },
+        "data_uses": [
+          {
+            "source": {
+              "id": "calendar:today",
+              "kind": "calendar"
+            },
+            "operation": "ACCESS",
+            "necessary": true
+          },
+          {
+            "source": {
+              "id": "calendar:today",
+              "kind": "calendar"
+            },
+            "operation": "INFER",
+            "derivative": "job-search-status",
+            "necessary": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "D-retention-overreach",
+      "want": "REFORMULATE",
+      "policy": {
+        "version": "t1",
+        "data_use": [
+          {
+            "id": "sess",
+            "purpose": "triage",
+            "data_scope": [
+              "inbox:today"
+            ],
+            "permitted_operations": [
+              "ACCESS",
+              "PROCESS"
+            ]
+          }
+        ],
+        "actions": [
+          {
+            "id": "triage",
+            "purpose": "triage",
+            "action_scope": [
+              "triage-inbox"
+            ],
+            "approval": "none"
+          }
+        ]
+      },
+      "proposal": {
+        "proposal_id": "pD",
+        "purpose": "triage",
+        "external_operation": {
+          "kind": "ACT",
+          "action": "triage-inbox"
+        },
+        "data_uses": [
+          {
+            "source": {
+              "id": "inbox:today",
+              "kind": "mail"
+            },
+            "operation": "ACCESS",
+            "necessary": true
+          },
+          {
+            "source": {
+              "id": "inbox:today",
+              "kind": "mail"
+            },
+            "operation": "RETAIN",
+            "derivative": "preference-model",
+            "necessary": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-reuse-overreach",
+      "want": "DENY",
+      "policy": {
+        "version": "t1",
+        "data_use": [
+          {
+            "id": "travel-only",
+            "purpose": "book-travel",
+            "data_scope": [
+              "calendar:travel-window"
+            ],
+            "permitted_operations": [
+              "ACCESS",
+              "PROCESS"
+            ]
+          }
+        ],
+        "actions": [
+          {
+            "id": "noop",
+            "purpose": "book-travel",
+            "action_scope": [
+              "noop"
+            ],
+            "approval": "none"
+          }
+        ]
+      },
+      "proposal": {
+        "proposal_id": "pE",
+        "purpose": "book-travel",
+        "data_uses": [
+          {
+            "source": {
+              "id": "calendar:travel-window",
+              "kind": "calendar"
+            },
+            "operation": "REUSE",
+            "derivative": "marketing-profile",
+            "necessary": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "F-composed-privilege",
+      "want": "DENY",
+      "policy": {
+        "version": "t1",
+        "data_use": [
+          {
+            "id": "all-narrow",
+            "purpose": "prep-meeting",
+            "data_scope": [
+              "calendar:*",
+              "contacts:*",
+              "mail:*"
+            ],
+            "permitted_operations": [
+              "ACCESS",
+              "PROCESS"
+            ]
+          }
+        ],
+        "actions": [
+          {
+            "id": "prep",
+            "purpose": "prep-meeting",
+            "action_scope": [
+              "prep-brief"
+            ],
+            "approval": "none"
+          }
+        ],
+        "forbidden_combinations": [
+          [
+            "calendar:*",
+            "contacts:*",
+            "mail:*"
+          ]
+        ]
+      },
+      "proposal": {
+        "proposal_id": "pF",
+        "purpose": "prep-meeting",
+        "external_operation": {
+          "kind": "ACT",
+          "action": "prep-brief"
+        },
+        "data_uses": [
+          {
+            "source": {
+              "id": "calendar:today",
+              "kind": "calendar"
+            },
+            "operation": "ACCESS",
+            "necessary": true
+          },
+          {
+            "source": {
+              "id": "contacts:team",
+              "kind": "contacts"
+            },
+            "operation": "ACCESS",
+            "necessary": true
+          },
+          {
+            "source": {
+              "id": "mail:thread-9",
+              "kind": "mail"
+            },
+            "operation": "ACCESS",
+            "necessary": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "G-third-party",
+      "want": "REFORMULATE",
+      "policy": {
+        "version": "t1",
+        "data_use": [
+          {
+            "id": "mail-find",
+            "purpose": "find-meeting",
+            "data_scope": [
+              "mail:*"
+            ],
+            "permitted_operations": [
+              "ACCESS",
+              "PROCESS"
+            ]
+          }
+        ],
+        "actions": [
+          {
+            "id": "find",
+            "purpose": "find-meeting",
+            "action_scope": [
+              "find-slot"
+            ],
+            "approval": "none"
+          }
+        ]
+      },
+      "proposal": {
+        "proposal_id": "pG",
+        "purpose": "find-meeting",
+        "external_operation": {
+          "kind": "ACT",
+          "action": "find-slot"
+        },
+        "data_uses": [
+          {
+            "source": {
+              "id": "mail:inbox",
+              "kind": "mail"
+            },
+            "operation": "ACCESS",
+            "necessary": true
+          },
+          {
+            "source": {
+              "id": "mail:inbox",
+              "kind": "mail"
+            },
+            "operation": "INFER",
+            "derivative": "colleague-job-search",
+            "third_party": true,
+            "necessary": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "H-revoked",
+      "want": "DENY",
+      "policy": {
+        "version": "t1",
+        "data_use": [
+          {
+            "id": "cal-travel",
+            "purpose": "book-travel",
+            "data_scope": [
+              "calendar:travel-window"
+            ],
+            "permitted_operations": [
+              "ACCESS",
+              "PROCESS"
+            ]
+          }
+        ],
+        "actions": [
+          {
+            "id": "search",
+            "purpose": "book-travel",
+            "action_scope": [
+              "search-flights"
+            ],
+            "approval": "none"
+          }
+        ],
+        "revoked": [
+          {
+            "id": "search",
+            "revoked_at": "2026-09-24T00:00:00.000Z"
+          }
+        ]
+      },
+      "proposal": {
+        "proposal_id": "pH",
+        "purpose": "book-travel",
+        "external_operation": {
+          "kind": "ACT",
+          "action": "search-flights"
+        },
+        "data_uses": [
+          {
+            "source": {
+              "id": "calendar:travel-window",
+              "kind": "calendar"
+            },
+            "operation": "ACCESS",
+            "necessary": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "I-speech-without-disclosure",
+      "want": "REFORMULATE",
+      "policy": {
+        "version": "t1",
+        "data_use": [
+          {
+            "id": "price-internal",
+            "purpose": "negotiate",
+            "data_scope": [
+              "prefs:budget"
+            ],
+            "permitted_operations": [
+              "ACCESS",
+              "PROCESS"
+            ]
+          }
+        ],
+        "actions": [
+          {
+            "id": "noop",
+            "purpose": "negotiate",
+            "action_scope": [
+              "noop"
+            ],
+            "approval": "none"
+          }
+        ],
+        "speech": [
+          {
+            "id": "neg",
+            "purpose": "negotiate",
+            "audience_scope": [
+              "seller:*"
+            ],
+            "topic_scope": [
+              "price"
+            ],
+            "permitted_acts": [
+              "NEGOTIATE",
+              "OFFER",
+              "REQUEST"
+            ],
+            "approval": "none"
+          }
+        ]
+      },
+      "proposal": {
+        "proposal_id": "pI",
+        "purpose": "negotiate",
+        "external_operation": {
+          "kind": "SPEAK",
+          "action": "NEGOTIATE",
+          "audience": "seller:acme",
+          "topics": [
+            "price"
+          ]
+        },
+        "data_uses": [
+          {
+            "source": {
+              "id": "prefs:budget",
+              "kind": "profile"
+            },
+            "operation": "ACCESS",
+            "necessary": true
+          },
+          {
+            "source": {
+              "id": "prefs:budget",
+              "kind": "profile"
+            },
+            "operation": "DISCLOSE",
+            "recipient": "seller:acme",
+            "necessary": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "I2-speech-clean",
+      "want": "ALLOW",
+      "policy": {
+        "version": "t1",
+        "data_use": [
+          {
+            "id": "price-internal",
+            "purpose": "negotiate",
+            "data_scope": [
+              "prefs:budget"
+            ],
+            "permitted_operations": [
+              "ACCESS",
+              "PROCESS"
+            ]
+          }
+        ],
+        "actions": [
+          {
+            "id": "noop",
+            "purpose": "negotiate",
+            "action_scope": [
+              "noop"
+            ],
+            "approval": "none"
+          }
+        ],
+        "speech": [
+          {
+            "id": "neg",
+            "purpose": "negotiate",
+            "audience_scope": [
+              "seller:*"
+            ],
+            "topic_scope": [
+              "price"
+            ],
+            "permitted_acts": [
+              "NEGOTIATE",
+              "OFFER",
+              "REQUEST"
+            ],
+            "approval": "none"
+          }
+        ]
+      },
+      "proposal": {
+        "proposal_id": "pI2",
+        "purpose": "negotiate",
+        "external_operation": {
+          "kind": "SPEAK",
+          "action": "NEGOTIATE",
+          "audience": "seller:acme",
+          "topics": [
+            "price"
+          ]
+        },
+        "data_uses": [
+          {
+            "source": {
+              "id": "prefs:budget",
+              "kind": "profile"
+            },
+            "operation": "ACCESS",
+            "necessary": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "J-illegitimate-predicate",
+      "want": "DENY",
+      "policy": {
+        "version": "t1",
+        "data_use": [
+          {
+            "id": "dir",
+            "purpose": "find-collaborator",
+            "data_scope": [
+              "directory:*"
+            ],
+            "permitted_operations": [
+              "ACCESS",
+              "PROCESS"
+            ]
+          }
+        ],
+        "actions": [
+          {
+            "id": "noop",
+            "purpose": "find-collaborator",
+            "action_scope": [
+              "noop"
+            ],
+            "approval": "none"
+          }
+        ],
+        "discovery": [
+          {
+            "id": "collab",
+            "purpose": "find-collaborator",
+            "permitted_predicates": [
+              "works-on-embeddings"
+            ],
+            "approval": "none"
+          }
+        ]
+      },
+      "proposal": {
+        "proposal_id": "pJ",
+        "purpose": "find-collaborator",
+        "external_operation": {
+          "kind": "DISCOVER",
+          "action": "planning-to-leave-employer"
+        },
+        "data_uses": [
+          {
+            "source": {
+              "id": "directory:staff",
+              "kind": "directory"
+            },
+            "operation": "ACCESS",
+            "necessary": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "approval-purchase",
+      "want": "REQUIRE_APPROVAL",
+      "policy": {
+        "version": "t1",
+        "data_use": [
+          {
+            "id": "cal-travel",
+            "purpose": "book-travel",
+            "data_scope": [
+              "calendar:travel-window"
+            ],
+            "permitted_operations": [
+              "ACCESS",
+              "PROCESS"
+            ]
+          }
+        ],
+        "actions": [
+          {
+            "id": "buy",
+            "purpose": "book-travel",
+            "action_scope": [
+              "purchase-flight"
+            ],
+            "approval": "required"
+          }
+        ]
+      },
+      "proposal": {
+        "proposal_id": "pK",
+        "purpose": "book-travel",
+        "external_operation": {
+          "kind": "ACT",
+          "action": "purchase-flight"
+        },
+        "data_uses": [
+          {
+            "source": {
+              "id": "calendar:travel-window",
+              "kind": "calendar"
+            },
+            "operation": "ACCESS",
+            "necessary": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "expired-grant",
+      "want": "DENY",
+      "policy": {
+        "version": "t1",
+        "data_use": [
+          {
+            "id": "cal-old",
+            "purpose": "book-travel",
+            "data_scope": [
+              "calendar:*"
+            ],
+            "permitted_operations": [
+              "ACCESS"
+            ],
+            "expires_at": "2026-01-01T00:00:00.000Z"
+          }
+        ],
+        "actions": [
+          {
+            "id": "search",
+            "purpose": "book-travel",
+            "action_scope": [
+              "search-flights"
+            ],
+            "approval": "none"
+          }
+        ]
+      },
+      "proposal": {
+        "proposal_id": "pL",
+        "purpose": "book-travel",
+        "external_operation": {
+          "kind": "ACT",
+          "action": "search-flights"
+        },
+        "data_uses": [
+          {
+            "source": {
+              "id": "calendar:today",
+              "kind": "calendar"
+            },
+            "operation": "ACCESS",
+            "necessary": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "purpose-mismatch",
+      "want": "DENY",
+      "policy": {
+        "version": "t1",
+        "data_use": [
+          {
+            "id": "cal-travel",
+            "purpose": "book-travel",
+            "data_scope": [
+              "calendar:travel-window"
+            ],
+            "permitted_operations": [
+              "ACCESS",
+              "PROCESS"
+            ]
+          }
+        ],
+        "actions": [
+          {
+            "id": "search",
+            "purpose": "book-travel",
+            "action_scope": [
+              "search-flights"
+            ],
+            "approval": "none"
+          }
+        ]
+      },
+      "proposal": {
+        "proposal_id": "pM",
+        "purpose": "marketing-profile",
+        "external_operation": {
+          "kind": "ACT",
+          "action": "search-flights"
+        },
+        "data_uses": [
+          {
+            "source": {
+              "id": "calendar:travel-window",
+              "kind": "calendar"
+            },
+            "operation": "ACCESS",
+            "necessary": true
+          }
+        ]
+      }
+    }
+  ]
+}

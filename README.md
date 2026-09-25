@@ -88,4 +88,4 @@ Authority does not decide relevance or representation. It receives a proposal fr
 
 ## Status
 
-**Design seed only.** Validate the deterministic policy model and exact OpenCode enforcement surface before claiming broad gating.
+**v0.1 implemented (pure evaluator + tools).** Deterministic engine (DataUseAuthority/ActionGrant/SpeechGrant/DiscoveryGrant, six data operations, four verdicts, necessity/minimisation, composed-privilege detection, third-party boundary, revocation accounting, minimised receipts), OpenCode tools (`authority_check`, `authority_explain`, `authority_health`), 15-case adversarial battery (15/15, zero false ALLOWs), unit tests, no-inference load check. No hook enforcement yet — that is Phase 8, explicitly unclaimed.

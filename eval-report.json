@@ -1,0 +1,26 @@
+{
+  "battery": "authority-v0.1",
+  "n": 15,
+  "correct": 15,
+  "false_allows": [],
+  "by_expected_verdict": {
+    "REFORMULATE": {
+      "n": 6,
+      "correct": 6
+    },
+    "ALLOW": {
+      "n": 2,
+      "correct": 2
+    },
+    "DENY": {
+      "n": 6,
+      "correct": 6
+    },
+    "REQUIRE_APPROVAL": {
+      "n": 1,
+      "correct": 1
+    }
+  },
+  "misses": [],
+  "warning": "mechanics conformance only. Behavioural utility, hook enforcement, and open-world validity untested."
+}

@@ -1,0 +1,26 @@
+{
+  "name": "opencode-authority",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Deterministic authority evaluation: may this operation proceed with this information for this purpose?",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./core": "./src/engine/index.ts"
+  },
+  "files": ["index.ts", "src", "scripts", "examples", "tests/battery.json", "README.md", "DESIGN.md", "LICENSE"],
+  "engines": { "node": ">=22.18.0" },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test tests/*.test.ts",
+    "eval": "node scripts/eval.ts",
+    "load-check": "node scripts/load-check.ts"
+  },
+  "dependencies": {
+    "@opencode/plugin": "^2.0.16"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  }
+}
