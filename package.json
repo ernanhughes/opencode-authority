@@ -17,7 +17,7 @@
     "load-check": "node scripts/load-check.ts"
   },
   "dependencies": {
-    "@opencode/plugin": "^2.0.16"
+    "@opencode/plugin": "^2.0.22"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
