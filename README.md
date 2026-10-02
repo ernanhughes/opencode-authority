@@ -171,7 +171,19 @@ Authority does not decide relevance or representation. It receives a proposal fr
 
 ## Status
 
-**v0.1 implemented (pure evaluator + tools).** Deterministic engine (DataUseAuthority/ActionGrant/SpeechGrant/DiscoveryGrant, six data operations, four verdicts, necessity/minimisation, composed-privilege detection, third-party boundary, revocation accounting, minimised receipts), OpenCode tools (`authority_check`, `authority_explain`, `authority_health`), 15-case adversarial battery (15/15, zero false ALLOWs), unit tests, no-inference load check. Canary-scoped hook enforcement implemented and mechanism-tested — broad interception and live OpenCode enforcement smoke remain unproven.
+**v0.1 implemented (pure evaluator + tools).** Deterministic engine (DataUseAuthority/ActionGrant/SpeechGrant/DiscoveryGrant, six data operations, four verdicts, necessity/minimisation, composed-privilege detection, third-party boundary, revocation accounting, minimised receipts), OpenCode tools (`authority_check`, `authority_explain`, `authority_health`), 15-case adversarial battery (15/15, zero false ALLOWs), unit tests, no-inference load check. Canary-scoped hook enforcement implemented and mechanism-tested - broad interception and live OpenCode enforcement smoke remain unproven.
+
+## Request boundary (Pass A)
+
+Authoritative detail lives in `CONTRACT.md`. In short: Authority inputs are
+closed and strictly validated — unknown fields are **rejected**, never
+stripped or coerced, and malformed security input fails closed with no
+verdict, no receipt and no effect. The registered tools opt out of Code Mode
+(`codemode: false`), so Code Mode calls to Authority are unavailable rather
+than silently transformed. The canary hook enforces only the configured
+canary tool; broad interception is unproven. A native Authority permission
+event has not been observed and remains UNKNOWN: an Authority verdict is
+advice to its caller, distinct from host permission and from world effect.
 
 ## Capability provider
 

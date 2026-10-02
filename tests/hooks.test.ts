@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { registerAuthorityGate } from "../src/hooks.ts";
+import { CanaryWriteTool, registerAuthorityGate } from "../src/hooks.ts";
 import { verdictToEffect } from "../src/gate.ts";
 import type { GateOptions } from "../src/gate.ts";
 
@@ -101,6 +101,14 @@ void describe("permission hook", () => {
     await captured.permissionHooks[0](event);
     assert.equal(event["effect"], "deny");
   });
+  void it("malformed policy cannot fail open with mandatory disabled", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "authz-permission-invalid-"));
+    const { host, captured } = fakeHost();
+    await registerAuthorityGate(host, options(writePolicy(dir, { ...POLICY, actions: [{ ...POLICY.actions[0], approval: "auto" }] }), { mandatory: false }));
+    const event: Record<string, unknown> = { effect: "allow", action: "canary-write", sessionID: "s1" };
+    await captured.permissionHooks[0](event);
+    assert.equal(event["effect"], "deny");
+  });
 });
 
 void describe("tool hook", () => {
@@ -133,5 +141,73 @@ void describe("tool hook", () => {
     const toolLines = lines.filter((l) => l.boundary === "tool.execute.before");
     assert.equal(toolLines.length, 2);
     assert.equal(toolLines[0].receipt_id, toolLines[1].receipt_id);
+  });
+  for (const [verdict, policy, context] of [
+    ["ALLOW", POLICY, []],
+    ["DENY", { version: "deny", data_use: [], actions: [] }, []],
+    ["REQUIRE_APPROVAL", { ...POLICY, actions: [{ ...POLICY.actions[0], approval: "required" }] }, []],
+    ["REFORMULATE", POLICY, ["mailbox:all"]],
+  ] as const) void it(`${verdict} governs the canary effect independently of host permission`, async () => {
+    const dir = mkdtempSync(join(tmpdir(), "authz-verdict-"));
+    const { host, captured } = fakeHost();
+    const opts = options(writePolicy(dir, policy));
+    await registerAuthorityGate(host, opts);
+    const input = { marker: "expected", target: "marker.txt", context_sources: [...context] };
+    assert.equal(CanaryWriteTool(opts).options?.codemode, false);
+    let entered = false;
+    const invoke = async () => {
+      await captured.toolHooks[0]({ tool: opts.canaryTool, sessionID: "s", id: "verdict", input });
+      entered = true;
+      return CanaryWriteTool(opts).execute(input, undefined as never);
+    };
+    if (verdict === "ALLOW") await invoke();
+    else await assert.rejects(invoke, /authority/);
+    assert.equal(entered, verdict === "ALLOW");
+    assert.equal(existsSync(join(opts.canaryDir, "marker.txt")), verdict === "ALLOW");
+    const records = readFileSync(join(opts.traceDir, "authority-gate.jsonl"), "utf8").trim().split("\n").map(JSON.parse as (s: string) => any);
+    assert.equal(records[0].receipt.verdict, verdict);
+    assert.equal(records[0].host_permission, "UNKNOWN");
+  });
+
+  for (const bad of [
+    { marker: "m", target: "bad.txt", unexpected: true },
+    { marker: "m", target: "bad.txt", context_sources: [false] },
+    { marker: "m", target: "bad.txt", context_sources: "mailbox:all" },
+    { marker: 1, target: "bad.txt" },
+    { marker: "m" },
+  ]) void it(`malformed canary ${JSON.stringify(bad)} cannot be filtered into ALLOW`, async () => {
+    const dir = mkdtempSync(join(tmpdir(), "authz-malformed-"));
+    const opts = options(writePolicy(dir, POLICY), { mandatory: false });
+    const { host, captured } = fakeHost();
+    await registerAuthorityGate(host, opts);
+    await assert.rejects(async () => captured.toolHooks[0]({ tool: opts.canaryTool, id: "bad", input: bad }), /fail-closed/);
+    await assert.rejects(() => CanaryWriteTool(opts).execute(bad, undefined as never), /Invalid|Unrecognized/);
+    assert.equal(existsSync(join(opts.canaryDir, "bad.txt")), false);
+    const records = readFileSync(join(opts.traceDir, "authority-gate.jsonl"), "utf8").trim().split("\n").map(JSON.parse as (s: string) => any);
+    assert.equal(records[0].stage, "VALIDATION_REJECTED");
+    assert.equal(records[0].verdict, undefined);
+  });
+
+  void it("changed context or policy cannot reuse a prior canary ALLOW", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "authz-cache-"));
+    const file = writePolicy(dir, POLICY);
+    const opts = options(file);
+    const { host, captured } = fakeHost();
+    await registerAuthorityGate(host, opts);
+    const base = { tool: opts.canaryTool, sessionID: "s", id: "reused", input: { marker: "m", target: "x.txt" } };
+    await captured.toolHooks[0](base);
+    await assert.rejects(async () => captured.toolHooks[0]({ ...base, input: { ...base.input, context_sources: ["mailbox:all"] } }), /REFORMULATE/);
+    writeFileSync(file, JSON.stringify({ ...POLICY, actions: [] }));
+    await assert.rejects(async () => captured.toolHooks[0](base), /fail-closed/);
+    assert.equal(existsSync(join(opts.canaryDir, "x.txt")), false);
+  });
+
+  void it("malformed nested policy fails closed without a fabricated DENY receipt", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "authz-policy-"));
+    const opts = options(writePolicy(dir, { ...POLICY, actions: [{ ...POLICY.actions[0], approval: "auto" }] }));
+    const { host, captured } = fakeHost();
+    await registerAuthorityGate(host, opts);
+    await assert.rejects(async () => captured.toolHooks[0]({ tool: opts.canaryTool, id: "invalid", input: { marker: "m", target: "x.txt" } }), /POLICY_INVALID/);
+    assert.equal(existsSync(join(opts.canaryDir, "x.txt")), false);
   });
 });

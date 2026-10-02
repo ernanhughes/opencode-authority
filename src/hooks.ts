@@ -3,11 +3,13 @@ import { dirname, join, normalize, resolve, sep } from "node:path";
 import type { Info as ToolInfo } from "@opencode/plugin/promise/tool";
 import { EvaluationCache, gateOptionsFromEnv, loadPolicyFile, verdictToEffect, type GateOptions } from "./gate.ts";
 import { AuthorityError, type AuthorityPolicy, type AuthorityProposal } from "./engine/types.ts";
+import { canarySchema, nativeInput, validateInput } from "./validation.ts";
+import { requestHash } from "./boundary.ts";
 
 function trace(options: GateOptions, record: Record<string, unknown>): void {
   try {
     mkdirSync(options.traceDir, { recursive: true });
-    appendFileSync(join(options.traceDir, "authority-gate.jsonl"), JSON.stringify({ ts: new Date().toISOString(), ...record }) + "\n");
+    appendFileSync(join(options.traceDir, "authority-gate.jsonl"), JSON.stringify({ schema: "opencode.authority_boundary.v1", ts: new Date().toISOString(), ...record }) + "\n");
   } catch {
     // Tracing must never break enforcement.
   }
@@ -26,11 +28,10 @@ function isAbsolutePath(p: string): boolean {
 
 /** Build the authority proposal for a canary invocation.
  *  Target access is declared necessary; extra context sources are declared
- *  unnecessary unless the caller marks them required. */
-function canaryProposal(marker: string, target: string, contextSources: string[]): AuthorityProposal {
-  void marker;
+ *  unnecessary. The canary input has no required-context override. */
+function canaryProposal(id: string, target: string, contextSources: string[]): AuthorityProposal {
   return {
-    proposal_id: `canary-${Date.now().toString(36)}`,
+    proposal_id: id,
     purpose: "authority-canary",
     external_operation: { kind: "ACT", action: "canary-write", target },
     data_uses: [
@@ -66,7 +67,7 @@ export async function registerAuthorityGate(host: HookHost, options: GateOptions
   // Native permission boundary: coarse action authority. Never weakens a host deny.
   await host.permission.hook("evaluate", async (event) => {
     if (event["effect"] === "deny") {
-      trace(options, { boundary: "permission", host_decision: "deny-final", action: event["action"] });
+      trace(options, { boundary: "permission", stage: "OPEN_CODE_PERMISSION_RESULT", host_decision: "deny-final", action: event["action"] });
       return;
     }
     const action = event["action"];
@@ -88,12 +89,12 @@ export async function registerAuthorityGate(host: HookHost, options: GateOptions
       if (record.receipt.verdict === "REFORMULATE" || record.receipt.verdict === "DENY") {
         event["message"] = record.receipt.reformulation ?? `denied by authority policy ${policy.version}`;
       }
-      trace(options, { boundary: "permission", action, verdict: record.receipt.verdict, receipt_id: record.receipt.receipt_id });
+      trace(options, { boundary: "permission", stage: "AUTHORITY_DECIDED", action, verdict: record.receipt.verdict, mapped_permission_effect: event["effect"], receipt: record.receipt, proposal_sha256: record.proposal_sha256, policy_sha256: record.policy_sha256, receipt_id: record.receipt.receipt_id });
     } catch (error) {
-      if (options.mandatory) {
+      if (error instanceof AuthorityError || options.mandatory) {
         event["effect"] = "deny";
         event["message"] = error instanceof AuthorityError ? `authority fail-closed: ${error.code}` : "authority fail-closed: engine unavailable";
-        trace(options, { boundary: "permission", action, verdict: "DENY", reason: "fail-closed" });
+        trace(options, { boundary: "permission", stage: "VALIDATION_REJECTED", action, reason: "fail-closed", mapped_permission_effect: "deny" });
       }
     }
   });
@@ -101,19 +102,24 @@ export async function registerAuthorityGate(host: HookHost, options: GateOptions
   // Tool execution boundary: rich proposal inspection incl. data-use path.
   await host.tool.hook("execute.before", async (event) => {
     if (event["tool"] !== options.canaryTool) return;
-    const input = (event["input"] ?? {}) as { marker?: unknown; target?: unknown; context_sources?: unknown };
-    const marker = typeof input["marker"] === "string" ? input["marker"] : "";
-    const target = typeof input["target"] === "string" ? input["target"] : "";
-    const contextSources = Array.isArray(input["context_sources"]) ? input["context_sources"].filter((s): s is string => typeof s === "string") : [];
-    const absolute = targetInsideDir(options.canaryDir, target);
-    const key = `tool:${String(event["id"] ?? "")}`;
+    const key = `tool:${String(event["sessionID"] ?? "")}:${String(event["id"] ?? "")}`;
     try {
+      const input = validateInput(canarySchema, event["input"]);
+      const absolute = targetInsideDir(options.canaryDir, input.target);
       if (!absolute) throw new AuthorityError("POLICY_INVALID", "canary target escapes the canary directory");
       const policy = loadPolicy();
-      const record = cache.getOrEvaluate(key, canaryProposal(marker, absolute, contextSources), policy);
+      const proposal = canaryProposal(key, absolute, input.context_sources ?? []);
+      // Bind the marker too: it is not a policy field but is part of the actual effect.
+      const record = cache.getOrEvaluate(`${key}:${requestHash(input)}`, proposal, policy);
       trace(options, {
         boundary: "tool.execute.before",
+        stage: "AUTHORITY_DECIDED",
+        sessionID: event["sessionID"], callID: event["id"],
         tool: event["tool"],
+        received_sha256: requestHash(input), proposal_sha256: record.proposal_sha256,
+        policy_sha256: record.policy_sha256, receipt: record.receipt,
+        enforcement: "authority_canary_before_hook", execution: record.receipt.verdict === "ALLOW" ? "PERMITTED_BY_AUTHORITY" : "PREVENTED_BY_AUTHORITY",
+        host_permission: "UNKNOWN", world_effect: "UNKNOWN",
         verdict: record.receipt.verdict,
         receipt_id: record.receipt.receipt_id,
         reformulation: record.receipt.reformulation ?? null,
@@ -125,8 +131,8 @@ export async function registerAuthorityGate(host: HookHost, options: GateOptions
         throw new Error("authority requires approval before canary execution");
       }
     } catch (error) {
-      if (error instanceof AuthorityError && options.mandatory) {
-        trace(options, { boundary: "tool.execute.before", tool: event["tool"], verdict: "DENY", reason: `fail-closed: ${error.code}` });
+      if (error instanceof AuthorityError) {
+        trace(options, { boundary: "tool.execute.before", stage: "VALIDATION_REJECTED", tool: event["tool"], sessionID: event["sessionID"], callID: event["id"], received_sha256: event["input"] === undefined ? null : requestHash(event["input"]), reason: `fail-closed: ${error.code}`, execution: "PREVENTED_BY_AUTHORITY" });
         throw new Error(`authority fail-closed: ${error.code}`);
       }
       throw error;
@@ -137,19 +143,11 @@ export async function registerAuthorityGate(host: HookHost, options: GateOptions
 export function CanaryWriteTool(options: GateOptions = gateOptionsFromEnv()): ToolInfo {
   return {
     name: options.canaryTool,
+    options: { codemode: false },
     description: "Harmless deterministic canary: write a marker string to a file inside the authority canary directory exactly once. Gated by authority hooks; fails closed outside the canary dir.",
-    input: {
-      type: "object",
-      properties: {
-        marker: { type: "string", minLength: 1 },
-        target: { type: "string", minLength: 1 },
-        context_sources: { type: "array", items: { type: "string" } },
-      },
-      required: ["marker", "target"],
-      additionalProperties: false,
-    },
+    input: nativeInput(canarySchema),
     async execute(input) {
-      const args = input as { marker: string; target: string };
+      const args = validateInput(canarySchema, input);
       const absolute = targetInsideDir(options.canaryDir, args.target);
       if (!absolute) throw new Error("canary target escapes the canary directory");
       mkdirSync(dirname(absolute), { recursive: true });

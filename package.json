@@ -8,7 +8,7 @@
     ".": "./src/index.ts",
     "./core": "./src/engine/index.ts"
   },
-  "files": ["index.ts", "src", "scripts", "examples", "tests/battery.json", "README.md", "DESIGN.md", "LICENSE"],
+  "files": ["index.ts", "src", "scripts", "examples", "tests/battery.json", "README.md", "DESIGN.md", "CONTRACT.md", "CONTRACT-RESUME.md", "LICENSE"],
   "engines": { "node": ">=22.18.0" },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
@@ -17,7 +17,8 @@
     "load-check": "node scripts/load-check.ts"
   },
   "dependencies": {
-    "@opencode/plugin": "^2.0.22"
+    "@opencode/plugin": "^2.0.22",
+    "zod": "4.1.8"
   },
   "devDependencies": {
     "typescript": "^5.6.0",

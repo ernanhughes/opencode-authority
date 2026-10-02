@@ -1,4 +1,6 @@
 import { readFileSync } from "node:fs";
+import { policySchema, validateInput } from "./validation.ts";
+import { requestHash } from "./boundary.ts";
 import { evaluate, type EvaluateOptions } from "./engine/index.ts";
 import {
   AuthorityError,
@@ -43,7 +45,7 @@ export function loadPolicyFile(path: string): AuthorityPolicy {
   } catch {
     throw new AuthorityError("POLICY_INVALID", `policy file is not valid JSON: ${path}`);
   }
-  return parsed as AuthorityPolicy;
+  return validateInput(policySchema, parsed, "POLICY_INVALID") as AuthorityPolicy;
 }
 
 /** OpenCode native permission effect mapped from an Authority verdict.
@@ -65,9 +67,12 @@ export interface EvaluationRecord {
   evaluation_id: string;
   receipt: AuthorityReceipt;
   at: string;
+  proposal_sha256: string;
+  policy_sha256: string;
 }
 
-/** One canonical evaluation per invocation id; both hooks consume the same result. */
+/** One evaluation per boundary identity, bound to its exact proposal and policy.
+ * Permission/tool hooks have separate identities and different proposals. */
 export class EvaluationCache {
   private readonly seen = new Map<string, EvaluationRecord>();
   getOrEvaluate(
@@ -76,10 +81,17 @@ export class EvaluationCache {
     policy: AuthorityPolicy,
     options: EvaluateOptions = {},
   ): EvaluationRecord {
+    const proposal_sha256 = requestHash(proposal);
+    const policy_sha256 = requestHash(policy);
     const existing = this.seen.get(key);
-    if (existing) return existing;
+    if (existing) {
+      if (existing.proposal_sha256 !== proposal_sha256 || existing.policy_sha256 !== policy_sha256) {
+        throw new AuthorityError("PROPOSAL_INVALID", "invocation identity reused with different proposal or policy");
+      }
+      return existing;
+    }
     const receipt = evaluate(proposal, policy, options);
-    const record: EvaluationRecord = { evaluation_id: receipt.receipt_id, receipt, at: new Date().toISOString() };
+    const record: EvaluationRecord = { evaluation_id: receipt.receipt_id, receipt, at: new Date().toISOString(), proposal_sha256, policy_sha256 };
     this.seen.set(key, record);
     return record;
   }

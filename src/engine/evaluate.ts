@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { clockSchema, policySchema, proposalSchema, validateInput } from "../validation.ts";
 import {
   AuthorityError,
   type AuthorityPolicy,
@@ -47,21 +48,11 @@ export interface EvaluateOptions {
 }
 
 function validatePolicy(policy: AuthorityPolicy): void {
-  if (!policy || typeof policy.version !== "string" || !Array.isArray(policy.data_use) || !Array.isArray(policy.actions)) {
-    throw new AuthorityError("POLICY_INVALID", "policy must carry version, data_use[], and actions[]");
-  }
-  for (const g of [...policy.data_use, ...policy.actions, ...(policy.speech ?? []), ...(policy.discovery ?? [])]) {
-    const grant = g as { id?: unknown; purpose?: unknown };
-    if (typeof grant.id !== "string" || typeof grant.purpose !== "string") {
-      throw new AuthorityError("POLICY_INVALID", "every grant needs string id and purpose");
-    }
-  }
+  validateInput(policySchema, policy, "POLICY_INVALID");
 }
 
 function validateProposal(proposal: AuthorityProposal): void {
-  if (!proposal || typeof proposal.proposal_id !== "string" || typeof proposal.purpose !== "string" || !Array.isArray(proposal.data_uses)) {
-    throw new AuthorityError("PROPOSAL_INVALID", "proposal must carry proposal_id, purpose, and data_uses[]");
-  }
+  validateInput(proposalSchema, proposal);
 }
 
 function checkDataUse(use: DataUse, policy: AuthorityPolicy, purpose: string, now: string): CheckResult[] {
@@ -189,6 +180,7 @@ export function evaluate(proposal: AuthorityProposal, policy: AuthorityPolicy, o
   validatePolicy(policy);
   validateProposal(proposal);
   const now = options.now ?? new Date().toISOString();
+  validateInput(clockSchema, now);
   if (policy.version.trim().length === 0) throw new AuthorityError("POLICY_INVALID", "policy.version must be non-empty");
 
   const data_receipts: DataUseReceipt[] = proposal.data_uses.map((use) => {
