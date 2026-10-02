@@ -31,6 +31,5 @@
       "approval": "required",
       "purpose": "book-travel"
     }
-  ],
-  "example_expected_rule": "Permission to search or purchase does not authorize unrelated mailbox access, durable inference, or disclosure."
+  ]
 }
