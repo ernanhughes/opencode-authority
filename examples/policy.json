@@ -4,21 +4,32 @@
     {
       "id": "calendar-for-travel",
       "purpose": "book-travel",
-      "data_scope": ["calendar:travel-window"],
-      "permitted_operations": ["ACCESS", "PROCESS"],
+      "data_scope": [
+        "calendar:travel-window"
+      ],
+      "permitted_operations": [
+        "ACCESS",
+        "PROCESS"
+      ],
       "retention": "session-only"
     }
   ],
   "actions": [
     {
       "id": "travel-search",
-      "action_scope": ["search-flights"],
-      "approval": "none"
+      "action_scope": [
+        "search-flights"
+      ],
+      "approval": "none",
+      "purpose": "book-travel"
     },
     {
       "id": "travel-purchase",
-      "action_scope": ["purchase-flight"],
-      "approval": "required"
+      "action_scope": [
+        "purchase-flight"
+      ],
+      "approval": "required",
+      "purpose": "book-travel"
     }
   ],
   "example_expected_rule": "Permission to search or purchase does not authorize unrelated mailbox access, durable inference, or disclosure."
